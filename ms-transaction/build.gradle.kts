@@ -57,12 +57,32 @@ tasks.withType<Test> {
 	finalizedBy(tasks.jacocoTestReport)
 }
 
+// Cargar .env desde la raíz del repo (../.env) para bootRun y tareas Flyway
+fun loadEnvFrom(file: java.io.File): Map<String, String> {
+	if (!file.exists()) return emptyMap()
+	return file.readLines()
+		.filter { it.contains("=") && !it.trimStart().startsWith("#") }
+		.associate { line ->
+			val (key, value) = line.split("=", limit = 2)
+			key.trim() to value.trim().removeSurrounding("\"")
+		}
+}
+
+val envFileForDb = rootProject.layout.projectDirectory.dir("../").file(".env").asFile
+val envMap = loadEnvFrom(envFileForDb)
+
 flyway {
 	driver = "org.postgresql.Driver"
-	url = System.getenv("DB_URL") ?: "jdbc:postgresql://localhost:5432/transaction_db"
-	user = System.getenv("DB_USER") ?: "postgres"
-	password = System.getenv("DB_PASSWORD") ?: ""
+	url = System.getenv("DB_URL") ?: envMap["DB_URL"] ?: "jdbc:postgresql://localhost:5432/transaction_db"
+	user = System.getenv("DB_USER") ?: envMap["DB_USER"] ?: "postgres"
+	password = System.getenv("DB_PASSWORD") ?: envMap["DB_PASSWORD"] ?: ""
 	cleanDisabled = false
+}
+
+tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
+	if (envFileForDb.exists()) {
+		environment(envMap)
+	}
 }
 
 

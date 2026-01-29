@@ -1,9 +1,13 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
+import { Controller, useForm, type Resolver } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { TransactionCreateDTO, TransactionUpdateDTO, TransactionResponseDTO, TransactionFormMode } from "@/types/transaction";
 import { isoToLocalDateTime } from "@/lib/utils/format";
+import { transactionCreateSchema, transactionUpdateSchema } from "@/lib/validations/transaction";
+import type { TransactionCreateFormValues } from "@/lib/validations/transaction";
 
 interface TransactionFormProps {
   mode: TransactionFormMode;
@@ -13,111 +17,51 @@ interface TransactionFormProps {
   isLoading?: boolean;
 }
 
-export function TransactionForm({ mode, initialData, onSubmit, onCancel, isLoading = false }: TransactionFormProps) {
-  const [formData, setFormData] = useState<{
-    userId: string;
-    businessId: string;
-    amount: string;
-    transactionDate: string;
-    description: string;
-  }>({
-    userId: initialData?.userId?.toString() || "",
-    businessId: initialData?.businessId?.toString() || "",
-    amount: initialData?.amount?.toString() || "",
+type TransactionFormValues = TransactionCreateFormValues;
+
+function getDefaultValues(initialData?: TransactionResponseDTO): TransactionFormValues {
+  return {
+    userId: initialData?.userId?.toString() ?? "",
+    businessId: initialData?.businessId?.toString() ?? "",
+    amount: initialData?.amount?.toString() ?? "",
     transactionDate: initialData ? isoToLocalDateTime(initialData.transactionDate) : "",
-    description: initialData?.description || "",
+    description: initialData?.description ?? "",
+  };
+}
+
+export function TransactionForm({ mode, initialData, onSubmit, onCancel, isLoading = false }: TransactionFormProps) {
+  const form = useForm<TransactionFormValues>({
+    resolver: zodResolver(mode === "create" ? transactionCreateSchema : transactionUpdateSchema) as Resolver<TransactionFormValues>,
+    defaultValues: getDefaultValues(initialData),
   });
 
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  // Actualizar formData cuando cambia initialData
   useEffect(() => {
     if (initialData) {
-      setFormData({
-        userId: initialData.userId.toString(),
-        businessId: initialData.businessId.toString(),
-        amount: initialData.amount.toString(),
-        transactionDate: isoToLocalDateTime(initialData.transactionDate),
-        description: initialData.description || "",
-      });
+      form.reset(getDefaultValues(initialData));
     }
-  }, [initialData]);
+  }, [initialData, form]);
 
-  const validate = (): boolean => {
-    const newErrors: Record<string, string> = {};
-
-    if (mode === "create") {
-      if (!formData.userId || formData.userId.trim() === "") {
-        newErrors.userId = "El usuario es requerido";
-      } else if (isNaN(Number(formData.userId)) || Number(formData.userId) < 1) {
-        newErrors.userId = "El ID de usuario debe ser un número válido";
-      }
-
-      if (!formData.businessId || formData.businessId.trim() === "") {
-        newErrors.businessId = "El negocio es requerido";
-      } else if (isNaN(Number(formData.businessId)) || Number(formData.businessId) < 1) {
-        newErrors.businessId = "El ID de negocio debe ser un número válido";
-      }
-
-      if (!formData.amount || formData.amount.trim() === "") {
-        newErrors.amount = "El monto es requerido";
-      } else {
-        const amountNum = Number(formData.amount);
-        if (isNaN(amountNum) || amountNum < 1) {
-          newErrors.amount = "El monto debe ser un número mayor o igual a 1";
-        }
-      }
-
-      if (!formData.transactionDate || formData.transactionDate.trim() === "") {
-        newErrors.transactionDate = "La fecha de transacción es requerida";
-      }
-    } else {
-      // En modo edición, validar solo los campos que se envían
-      if (formData.userId && formData.userId.trim() !== "" && (isNaN(Number(formData.userId)) || Number(formData.userId) < 1)) {
-        newErrors.userId = "El ID de usuario debe ser un número válido";
-      }
-      if (formData.businessId && formData.businessId.trim() !== "" && (isNaN(Number(formData.businessId)) || Number(formData.businessId) < 1)) {
-        newErrors.businessId = "El ID de negocio debe ser un número válido";
-      }
-      if (formData.amount && formData.amount.trim() !== "") {
-        const amountNum = Number(formData.amount);
-        if (isNaN(amountNum) || amountNum < 1) {
-          newErrors.amount = "El monto debe ser un número mayor o igual a 1";
-        }
-      }
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!validate()) {
-      return;
-    }
-
+  const handleSubmitForm = async (data: TransactionFormValues) => {
     try {
       if (mode === "create") {
         const createData: TransactionCreateDTO = {
-          userId: Number(formData.userId),
-          businessId: Number(formData.businessId),
-          amount: Number(formData.amount),
-          transactionDate: new Date(formData.transactionDate).toISOString(),
-          description: formData.description || undefined,
+          userId: Number(data.userId),
+          businessId: Number(data.businessId),
+          amount: Number(data.amount),
+          transactionDate: new Date(data.transactionDate).toISOString(),
+          description: data.description || undefined,
         };
         await onSubmit(createData);
       } else {
         const updateData: TransactionUpdateDTO = {};
-        if (formData.userId) updateData.userId = Number(formData.userId);
-        if (formData.businessId) updateData.businessId = Number(formData.businessId);
-        if (formData.amount) updateData.amount = Number(formData.amount);
-        if (formData.transactionDate) {
-          updateData.transactionDate = new Date(formData.transactionDate).toISOString();
+        if (data.userId?.trim()) updateData.userId = Number(data.userId);
+        if (data.businessId?.trim()) updateData.businessId = Number(data.businessId);
+        if (data.amount?.trim()) updateData.amount = Number(data.amount);
+        if (data.transactionDate?.trim()) {
+          updateData.transactionDate = new Date(data.transactionDate).toISOString();
         }
-        if (formData.description !== undefined) {
-          updateData.description = formData.description || undefined;
+        if (data.description !== undefined) {
+          updateData.description = data.description || undefined;
         }
         await onSubmit(updateData);
       }
@@ -126,46 +70,75 @@ export function TransactionForm({ mode, initialData, onSubmit, onCancel, isLoadi
     }
   };
 
-  const handleChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
-    }
-  };
-
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={form.handleSubmit(handleSubmitForm)} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="userId">Usuario {mode === "create" && <span className="text-destructive">*</span>}</Label>
-        <Input id="userId" type="number" min="1" value={formData.userId} onChange={(e) => handleChange("userId", e.target.value)} disabled={isLoading} aria-invalid={!!errors.userId} />
-        {errors.userId && <p className="text-sm text-destructive">{errors.userId}</p>}
+        <Controller
+          name="userId"
+          control={form.control}
+          render={({ field, fieldState }) => (
+            <>
+              <Label htmlFor="userId">Usuario {mode === "create" && <span className="text-destructive">*</span>}</Label>
+              <Input {...field} id="userId" type="number" min={1} disabled={isLoading} aria-invalid={fieldState.invalid} />
+              {fieldState.invalid && fieldState.error?.message && <p className="text-sm text-destructive">{fieldState.error.message}</p>}
+            </>
+          )}
+        />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="businessId">Negocio {mode === "create" && <span className="text-destructive">*</span>}</Label>
-        <Input id="businessId" type="number" min="1" value={formData.businessId} onChange={(e) => handleChange("businessId", e.target.value)} disabled={isLoading} aria-invalid={!!errors.businessId} />
-        {errors.businessId && <p className="text-sm text-destructive">{errors.businessId}</p>}
+        <Controller
+          name="businessId"
+          control={form.control}
+          render={({ field, fieldState }) => (
+            <>
+              <Label htmlFor="businessId">Negocio {mode === "create" && <span className="text-destructive">*</span>}</Label>
+              <Input {...field} id="businessId" type="number" min={1} disabled={isLoading} aria-invalid={fieldState.invalid} />
+              {fieldState.invalid && fieldState.error?.message && <p className="text-sm text-destructive">{fieldState.error.message}</p>}
+            </>
+          )}
+        />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="amount">Monto {mode === "create" && <span className="text-destructive">*</span>}</Label>
-        <Input id="amount" type="number" min="1" value={formData.amount} onChange={(e) => handleChange("amount", e.target.value)} disabled={isLoading} aria-invalid={!!errors.amount} />
-        {errors.amount && <p className="text-sm text-destructive">{errors.amount}</p>}
+        <Controller
+          name="amount"
+          control={form.control}
+          render={({ field, fieldState }) => (
+            <>
+              <Label htmlFor="amount">Monto {mode === "create" && <span className="text-destructive">*</span>}</Label>
+              <Input {...field} id="amount" type="number" min={1} disabled={isLoading} aria-invalid={fieldState.invalid} />
+              {fieldState.invalid && fieldState.error?.message && <p className="text-sm text-destructive">{fieldState.error.message}</p>}
+            </>
+          )}
+        />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="transactionDate">Fecha de Transacción {mode === "create" && <span className="text-destructive">*</span>}</Label>
-        <Input id="transactionDate" type="datetime-local" value={formData.transactionDate} onChange={(e) => handleChange("transactionDate", e.target.value)} disabled={isLoading} aria-invalid={!!errors.transactionDate} />
-        {errors.transactionDate && <p className="text-sm text-destructive">{errors.transactionDate}</p>}
+        <Controller
+          name="transactionDate"
+          control={form.control}
+          render={({ field, fieldState }) => (
+            <>
+              <Label htmlFor="transactionDate">Fecha de Transacción {mode === "create" && <span className="text-destructive">*</span>}</Label>
+              <Input {...field} id="transactionDate" type="datetime-local" disabled={isLoading} aria-invalid={fieldState.invalid} />
+              {fieldState.invalid && fieldState.error?.message && <p className="text-sm text-destructive">{fieldState.error.message}</p>}
+            </>
+          )}
+        />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="description">Descripción (opcional)</Label>
-        <Input id="description" type="text" value={formData.description} onChange={(e) => handleChange("description", e.target.value)} disabled={isLoading} placeholder="Descripción de la transacción" />
+        <Controller
+          name="description"
+          control={form.control}
+          render={({ field }) => (
+            <>
+              <Label htmlFor="description">Descripción (opcional)</Label>
+              <Input {...field} id="description" type="text" disabled={isLoading} placeholder="Descripción de la transacción" />
+            </>
+          )}
+        />
       </div>
 
       <div className="flex justify-end gap-2 pt-4">

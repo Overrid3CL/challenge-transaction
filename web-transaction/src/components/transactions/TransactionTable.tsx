@@ -1,35 +1,58 @@
-import { Button } from '@/components/ui/button'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import type { TransactionResponseDTO } from '@/types/transaction'
-import { formatCurrency, formatDateTime } from '@/lib/utils/format'
-import { Pencil, Trash2 } from 'lucide-react'
+"use client";
+
+import { useState, useMemo } from "react";
+import type { TransactionResponseDTO } from "@/types/transaction";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { getTransactionColumns } from "@/components/transactions/transactionColumns";
+import { DataTable } from "@/components/ui/data-table";
+import { TransactionDetailSheet } from "@/components/transactions/TransactionDetailSheet";
 
 interface TransactionTableProps {
-  transactions: TransactionResponseDTO[]
-  onEdit: (transaction: TransactionResponseDTO) => void
-  onDelete: (id: number) => void
-  isLoading?: boolean
+  transactions: TransactionResponseDTO[];
+  onEdit: (transaction: TransactionResponseDTO) => void;
+  onDelete: (id: number) => void;
+  isLoading?: boolean;
 }
 
-export function TransactionTable({
-  transactions,
-  onEdit,
-  onDelete,
-  isLoading = false,
-}: TransactionTableProps) {
+const MOBILE_BREAKPOINT = "(max-width: 768px)";
+
+/** Visibilidad de columnas en mobile: solo Usuario (con Comercio debajo) y Monto */
+const MOBILE_COLUMN_VISIBILITY: Record<string, boolean> = {
+  id: false,
+  userName: true,
+  businessName: false,
+  amount: true,
+  transactionDate: false,
+  description: false,
+  actions: false,
+};
+
+export function TransactionTable({ transactions, onEdit, onDelete, isLoading = false }: TransactionTableProps) {
+  const isMobile = useMediaQuery(MOBILE_BREAKPOINT);
+  const [detailTransaction, setDetailTransaction] = useState<TransactionResponseDTO | null>(null);
+  const [detailSheetOpen, setDetailSheetOpen] = useState(false);
+
+  const columns = useMemo(() => getTransactionColumns({ onEdit, onDelete }), [onEdit, onDelete]);
+
+  const columnVisibility = isMobile ? MOBILE_COLUMN_VISIBILITY : undefined;
+  const meta = { isMobile };
+
+  const openDetailSheet = (transaction: TransactionResponseDTO) => {
+    setDetailTransaction(transaction);
+    setDetailSheetOpen(true);
+  };
+
+  const handleCloseDetailSheet = (open: boolean) => {
+    setDetailSheetOpen(open);
+    if (!open) setDetailTransaction(null);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
         <p className="text-muted-foreground">Cargando transacciones...</p>
       </div>
-    )
+    );
   }
 
   if (transactions.length === 0) {
@@ -37,58 +60,26 @@ export function TransactionTable({
       <div className="flex items-center justify-center py-8">
         <p className="text-muted-foreground">No hay transacciones disponibles</p>
       </div>
-    )
+    );
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>ID</TableHead>
-          <TableHead>Usuario</TableHead>
-          <TableHead>Comercio</TableHead>
-          <TableHead>Monto</TableHead>
-          <TableHead>Fecha</TableHead>
-          <TableHead>Descripción</TableHead>
-          <TableHead className="text-right">Acciones</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {transactions.map((transaction) => (
-          <TableRow key={transaction.id}>
-            <TableCell className="font-medium">{transaction.id}</TableCell>
-            <TableCell>{transaction.userName}</TableCell>
-            <TableCell>{transaction.businessName}</TableCell>
-            <TableCell>{formatCurrency(transaction.amount)}</TableCell>
-            <TableCell>{formatDateTime(transaction.transactionDate)}</TableCell>
-            <TableCell>
-              {transaction.description || (
-                <span className="text-muted-foreground">-</span>
-              )}
-            </TableCell>
-            <TableCell className="text-right">
-              <div className="flex justify-end gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onEdit(transaction)}
-                  title="Editar transacción"
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onDelete(transaction.id)}
-                  title="Eliminar transacción"
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-              </div>
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
-  )
+    <>
+      <DataTable<TransactionResponseDTO, unknown>
+        columns={columns}
+        data={transactions}
+        columnVisibility={columnVisibility}
+        meta={meta}
+        getRowProps={
+          isMobile
+            ? (row) => ({
+                onClick: () => openDetailSheet(row),
+                className: "cursor-pointer",
+              })
+            : undefined
+        }
+      />
+      <TransactionDetailSheet open={detailSheetOpen} onOpenChange={handleCloseDetailSheet} transaction={detailTransaction} onEdit={onEdit} onDelete={onDelete} />
+    </>
+  );
 }

@@ -1,51 +1,75 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { TransactionTable } from "@/components/transactions/TransactionTable";
 import { TransactionForm } from "@/components/transactions/TransactionForm";
 import { transactionService } from "@/lib/api/transactionService";
 import type { TransactionResponseDTO, TransactionCreateDTO, TransactionUpdateDTO } from "@/types/transaction";
-import { Plus } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/shared/ConfirmDeleteDialog";
+import { Input } from "@/components/ui/input";
+
+const DEFAULT_PAGE_SIZE = 20;
+const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
+const DEBOUNCE_MS = 300;
+const DEFAULT_SORT = { column: "transactionDate", direction: "desc" as const };
 
 export function TransactionsPage() {
   const [transactions, setTransactions] = useState<TransactionResponseDTO[]>([]);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [sort, setSort] = useState<{ column: string; direction: "asc" | "desc" }>(DEFAULT_SORT);
+  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionResponseDTO | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const isEditMode = selectedTransaction !== null;
-
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [first, setFirst] = useState(true);
+  const [last, setLast] = useState(true);
 
-  // Ref para evitar ejecuciones duplicadas (React StrictMode en desarrollo)
+  const isEditMode = selectedTransaction !== null;
   const isLoadingRef = useRef(false);
 
-  // Cargar transacciones
+  // Debounce searchInput -> search, reset page
   useEffect(() => {
-    loadTransactions();
-  }, []);
+    const t = setTimeout(() => {
+      const s = searchInput.trim();
+      setSearch(s);
+      setPage(0);
+    }, DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
-  const loadTransactions = async () => {
-    // Evitar ejecuciones duplicadas simultáneas
-    if (isLoadingRef.current) {
-      return;
-    }
-
+  const loadTransactionsPaginated = useCallback(async () => {
+    if (isLoadingRef.current) return;
     isLoadingRef.current = true;
     setIsLoading(true);
     setError(null);
     try {
-      const data = await transactionService.getAllTransactions();
-      setTransactions(data);
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || "Error al cargar las transacciones";
+      const sortParam = `${sort.column},${sort.direction}`;
+      const data = await transactionService.getTransactionsPaginated({
+        page,
+        size: pageSize,
+        sort: sortParam,
+        search: search || undefined,
+      });
+      setTransactions(data.content ?? []);
+      setTotalElements(data.totalElements ?? 0);
+      setTotalPages(data.totalPages ?? 1);
+      setFirst(data.first ?? true);
+      setLast(data.last ?? true);
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } }; message?: string };
+      const errorMessage = e.response?.data?.message || e.message || "Error al cargar las transacciones";
       setError(errorMessage);
       toast.error(errorMessage);
       console.error("Error al cargar transacciones:", err);
@@ -53,6 +77,26 @@ export function TransactionsPage() {
       setIsLoading(false);
       isLoadingRef.current = false;
     }
+  }, [page, pageSize, sort.column, sort.direction, search]);
+
+  useEffect(() => {
+    loadTransactionsPaginated();
+  }, [loadTransactionsPaginated]);
+
+  const handleSortChange = useCallback((column: string) => {
+    setSort((prev) => {
+      const same = prev.column === column;
+      return {
+        column,
+        direction: same && prev.direction === "desc" ? "asc" : "desc",
+      };
+    });
+    setPage(0);
+  }, []);
+
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    setPage(0);
   };
 
   const handleCreate = () => {
@@ -67,55 +111,33 @@ export function TransactionsPage() {
     setError(null);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = (id: number) => {
     setTransactionToDelete(id);
     setIsDeleteDialogOpen(true);
     setError(null);
-    /*
-    if (!window.confirm('¿Estás seguro de que deseas eliminar esta transacción?')) {
-      return
-    }
-
-    try {
-      await transactionService.deleteTransaction(id)
-      // Recargar la lista después de eliminar
-      await loadTransactions()
-      setError(null)
-    } catch (err: any) {
-      const errorMessage =
-        err.response?.data?.message ||
-        err.message ||
-        'Error al eliminar la transacción'
-      setError(errorMessage)
-      console.error('Error al eliminar transacción:', err)
-    }*/
   };
 
   const handleDeleteConfirm = async () => {
     setIsDeleting(true);
     setError(null);
-
     if (!transactionToDelete) {
-      const msg = "No se ha seleccionado ninguna transacción para eliminar";
-      setError(msg);
-      toast.error(msg);
+      toast.error("No se ha seleccionado ninguna transacción para eliminar");
       setIsDeleting(false);
       return;
     }
-
     try {
-      await transactionService.deleteTransaction(transactionToDelete as number);
-      await loadTransactions();
-      setError(null);
+      await transactionService.deleteTransaction(transactionToDelete);
+      await loadTransactionsPaginated();
       toast.success("Transacción eliminada correctamente");
       setIsDeleteDialogOpen(false);
-      setIsDeleting(false);
       setTransactionToDelete(null);
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || "Error al eliminar la transacción";
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } }; message?: string };
+      const errorMessage = e.response?.data?.message || e.message || "Error al eliminar la transacción";
       setError(errorMessage);
       toast.error(errorMessage);
       console.error("Error al eliminar transacción:", err);
+    } finally {
       setIsDeleting(false);
     }
   };
@@ -123,30 +145,23 @@ export function TransactionsPage() {
   const handleSubmit = async (data: TransactionCreateDTO | TransactionUpdateDTO) => {
     setIsSubmitting(true);
     setError(null);
-
     try {
       if (isEditMode && selectedTransaction) {
-        // Actualizar transacción existente
         await transactionService.updateTransaction(selectedTransaction.id, data as TransactionUpdateDTO);
         toast.success("Transacción actualizada correctamente");
       } else {
-        // Crear nueva transacción
         await transactionService.createTransaction(data as TransactionCreateDTO);
         toast.success("Transacción creada correctamente");
       }
-
-      // Cerrar el dialog y recargar la lista
       setIsDialogOpen(false);
       setSelectedTransaction(null);
-      await loadTransactions();
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || (isEditMode ? "Error al actualizar la transacción" : "Error al crear la transacción");
-
-      // Si hay errores de validación, mostrarlos
+      await loadTransactionsPaginated();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string; validationErrors?: Record<string, string> } }; message?: string };
+      const errorMessage = e.response?.data?.message || e.message || (isEditMode ? "Error al actualizar la transacción" : "Error al crear la transacción");
       let messageToShow: string;
-      if (err.response?.data?.validationErrors) {
-        const validationErrors = Object.values(err.response.data.validationErrors).join(", ");
-        messageToShow = `${errorMessage}: ${validationErrors}`;
+      if (e.response?.data?.validationErrors) {
+        messageToShow = `${errorMessage}: ${Object.values(e.response.data.validationErrors).join(", ")}`;
       } else {
         messageToShow = errorMessage;
       }
@@ -164,9 +179,12 @@ export function TransactionsPage() {
     setError(null);
   };
 
+  const from = totalElements === 0 ? 0 : page * pageSize + 1;
+  const to = Math.min((page + 1) * pageSize, totalElements);
+
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold">Transacciones</h1>
           <p className="text-muted-foreground mt-1">Gestiona tus transacciones financieras</p>
@@ -185,7 +203,41 @@ export function TransactionsPage() {
         </Card>
       )}
 
-      <TransactionTable transactions={transactions} onEdit={handleEdit} onDelete={handleDelete} isLoading={isLoading} />
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Buscar por usuario, comercio, descripción..." value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="pl-9" />
+        </div>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>Mostrar</span>
+          <select value={pageSize} onChange={(e) => handlePageSizeChange(Number(e.target.value))} className="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
+            {PAGE_SIZE_OPTIONS.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+          <span>por página</span>
+        </div>
+      </div>
+
+      <TransactionTable transactions={transactions ?? []} onEdit={handleEdit} onDelete={handleDelete} isLoading={isLoading} sort={sort} onSortChange={handleSortChange} emptyMessage={search ? "No se encontraron resultados" : "No hay transacciones disponibles"} />
+
+      {!isLoading && (transactions ?? []).length > 0 && (
+        <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted-foreground">
+            Mostrando {from}–{to} de {totalElements}
+          </p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled={first} onClick={() => setPage((p) => Math.max(0, p - 1))}>
+              Anterior
+            </Button>
+            <Button variant="outline" size="sm" disabled={last} onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}>
+              Siguiente
+            </Button>
+          </div>
+        </div>
+      )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-2xl">
@@ -193,14 +245,12 @@ export function TransactionsPage() {
             <DialogTitle>{isEditMode ? "Editar Transacción" : "Nueva Transacción"}</DialogTitle>
             <DialogDescription>{isEditMode ? "Modifica los campos que deseas actualizar. Todos los campos son opcionales." : "Completa el formulario para crear una nueva transacción."}</DialogDescription>
           </DialogHeader>
-
           {error && (
             <div className="rounded-md bg-destructive/10 p-3">
               <p className="text-sm text-destructive">{error}</p>
             </div>
           )}
-
-          <TransactionForm mode={isEditMode ? "edit" : "create"} initialData={selectedTransaction || undefined} onSubmit={handleSubmit} onCancel={handleCancel} isLoading={isSubmitting} />
+          <TransactionForm mode={isEditMode ? "edit" : "create"} initialData={selectedTransaction ?? undefined} onSubmit={handleSubmit} onCancel={handleCancel} isLoading={isSubmitting} />
         </DialogContent>
       </Dialog>
 

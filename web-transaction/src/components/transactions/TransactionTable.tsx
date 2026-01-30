@@ -12,6 +12,9 @@ interface TransactionTableProps {
   onEdit: (transaction: TransactionResponseDTO) => void;
   onDelete: (id: number) => void;
   isLoading?: boolean;
+  sort?: { column: string; direction: "asc" | "desc" };
+  onSortChange?: (column: string) => void;
+  emptyMessage?: string;
 }
 
 const MOBILE_BREAKPOINT = "(max-width: 768px)";
@@ -27,12 +30,12 @@ const MOBILE_COLUMN_VISIBILITY: Record<string, boolean> = {
   actions: false,
 };
 
-export function TransactionTable({ transactions, onEdit, onDelete, isLoading = false }: TransactionTableProps) {
+export function TransactionTable({ transactions, onEdit, onDelete, isLoading = false, sort, onSortChange, emptyMessage = "No hay transacciones disponibles" }: TransactionTableProps) {
   const isMobile = useMediaQuery(MOBILE_BREAKPOINT);
   const [detailTransaction, setDetailTransaction] = useState<TransactionResponseDTO | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
 
-  const columns = useMemo(() => getTransactionColumns({ onEdit, onDelete }), [onEdit, onDelete]);
+  const columns = useMemo(() => getTransactionColumns({ onEdit, onDelete, sort, onSortChange }), [onEdit, onDelete, sort, onSortChange]);
 
   const columnVisibility = isMobile ? MOBILE_COLUMN_VISIBILITY : undefined;
   const meta = { isMobile };
@@ -58,7 +61,7 @@ export function TransactionTable({ transactions, onEdit, onDelete, isLoading = f
   if (transactions.length === 0) {
     return (
       <div className="flex items-center justify-center py-8">
-        <p className="text-muted-foreground">No hay transacciones disponibles</p>
+        <p className="text-muted-foreground">{emptyMessage}</p>
       </div>
     );
   }

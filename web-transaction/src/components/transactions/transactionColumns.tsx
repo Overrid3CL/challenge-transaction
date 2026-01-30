@@ -2,6 +2,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import type { TransactionResponseDTO } from "@/types/transaction";
+import { cn } from "@/lib/utils";
 import { formatCurrency, formatDateTime } from "@/lib/utils/format";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2 } from "lucide-react";
@@ -9,22 +10,41 @@ import { Pencil, Trash2 } from "lucide-react";
 export interface TransactionColumnsOptions {
   onEdit: (transaction: TransactionResponseDTO) => void;
   onDelete: (id: number) => void;
+  sort?: { column: string; direction: "asc" | "desc" };
+  onSortChange?: (column: string) => void;
+}
+
+const SORTABLE_COLUMNS = ["id", "userName", "businessName", "amount", "transactionDate", "description"];
+
+function SortableHeader({ label, accessorKey, sort, onSortChange, alignRight }: { label: string; accessorKey: string; sort?: { column: string; direction: "asc" | "desc" }; onSortChange?: (column: string) => void; alignRight?: boolean }) {
+  const active = sort?.column === accessorKey;
+  const canSort = SORTABLE_COLUMNS.includes(accessorKey) && !!onSortChange;
+  return (
+    <button type="button" onClick={() => canSort && onSortChange?.(accessorKey)} className={cn("inline-flex w-full items-center gap-1 font-medium focus:outline-none focus:ring-2 focus:ring-ring rounded", canSort && "hover:underline cursor-pointer", !canSort && "cursor-default")}>
+      {alignRight ? <span className="ml-auto">{label}</span> : label}
+      {canSort && active && sort && (
+        <span className="text-muted-foreground" aria-hidden>
+          {sort.direction === "asc" ? "↑" : "↓"}
+        </span>
+      )}
+    </button>
+  );
 }
 
 /**
  * Devuelve las definiciones de columnas para la tabla de transacciones.
  * En mobile (meta.isMobile) la columna userName muestra también businessName debajo (Opción B).
  */
-export function getTransactionColumns({ onEdit, onDelete }: TransactionColumnsOptions): ColumnDef<TransactionResponseDTO>[] {
+export function getTransactionColumns({ onEdit, onDelete, sort, onSortChange }: TransactionColumnsOptions): ColumnDef<TransactionResponseDTO>[] {
   return [
     {
       accessorKey: "id",
-      header: "ID",
+      header: () => <SortableHeader label="ID" accessorKey="id" sort={sort} onSortChange={onSortChange} />,
       cell: ({ row }) => <span className="font-medium">{row.original.id}</span>,
     },
     {
       accessorKey: "userName",
-      header: "Usuario",
+      header: () => <SortableHeader label="Usuario" accessorKey="userName" sort={sort} onSortChange={onSortChange} />,
       cell: ({ row, table }) => {
         const isMobile = (table.options.meta as { isMobile?: boolean })?.isMobile;
         const { userName, businessName } = row.original;
@@ -41,22 +61,26 @@ export function getTransactionColumns({ onEdit, onDelete }: TransactionColumnsOp
     },
     {
       accessorKey: "businessName",
-      header: "Comercio",
+      header: () => <SortableHeader label="Comercio" accessorKey="businessName" sort={sort} onSortChange={onSortChange} />,
       cell: ({ row }) => row.original.businessName,
     },
     {
       accessorKey: "amount",
-      header: () => <div className="text-right">Monto</div>,
+      header: () => (
+        <div className="flex w-full justify-end">
+          <SortableHeader label="Monto" accessorKey="amount" sort={sort} onSortChange={onSortChange} />
+        </div>
+      ),
       cell: ({ row }) => <div className="text-right font-medium">{formatCurrency(row.original.amount)}</div>,
     },
     {
       accessorKey: "transactionDate",
-      header: "Fecha",
+      header: () => <SortableHeader label="Fecha" accessorKey="transactionDate" sort={sort} onSortChange={onSortChange} />,
       cell: ({ row }) => formatDateTime(row.original.transactionDate),
     },
     {
       accessorKey: "description",
-      header: "Descripción",
+      header: () => <SortableHeader label="Descripción" accessorKey="description" sort={sort} onSortChange={onSortChange} />,
       cell: ({ row }) => row.original.description ?? <span className="text-muted-foreground">-</span>,
     },
     {

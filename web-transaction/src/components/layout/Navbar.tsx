@@ -23,7 +23,7 @@ export function Navbar({ onMenuClick }: NavbarProps) {
         {/* Menú Desktop - visible solo en md y superior */}
         <div className="hidden items-center gap-6 md:flex">
           {menuLinks.map((link) => (
-            <Link key={link.path} to={link.path} viewTransition className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+            <Link key={link.path} to={link.path} viewTransition={true} className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
               {link.label}
             </Link>
           ))}

@@ -10,6 +10,7 @@ import type { TransactionResponseDTO, TransactionCreateDTO, TransactionUpdateDTO
 import { Plus, Search } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/shared/ConfirmDeleteDialog";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const DEFAULT_PAGE_SIZE = 20;
 const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
@@ -210,13 +211,18 @@ export function TransactionsPage() {
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>Mostrar</span>
-          <select value={pageSize} onChange={(e) => handlePageSizeChange(Number(e.target.value))} className="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
-            {PAGE_SIZE_OPTIONS.map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
+          <Select value={String(pageSize)} onValueChange={(v) => handlePageSizeChange(Number(v))}>
+            <SelectTrigger className="w-[72px] h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PAGE_SIZE_OPTIONS.map((n) => (
+                <SelectItem key={n} value={String(n)}>
+                  {n}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <span>por página</span>
         </div>
       </div>

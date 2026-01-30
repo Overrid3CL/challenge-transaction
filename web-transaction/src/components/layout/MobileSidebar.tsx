@@ -9,6 +9,7 @@ interface MobileSidebarProps {
 const menuLinks = [
   { path: "/", label: "Inicio" },
   { path: "/transactions", label: "Transacciones" },
+  { path: "/users", label: "Usuarios" },
 ];
 
 export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {

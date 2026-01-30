@@ -82,7 +82,6 @@ export function DashboardCards() {
 
   return (
     <div className="grid grid-cols-1 gap-4 *:data-[slot=card]:shadow-xs lg:grid-cols-4">
-      {/* Card 1 - Volumen Total */}
       <Card className="@container/card">
         <CardHeader>
           <CardDescription>Volumen Total</CardDescription>
@@ -94,7 +93,6 @@ export function DashboardCards() {
         </CardFooter>
       </Card>
 
-      {/* Card 2 - Transacciones Control */}
       <Card className="@container/card">
         <CardHeader>
           <CardDescription>Transacciones Control</CardDescription>
@@ -106,7 +104,6 @@ export function DashboardCards() {
         </CardFooter>
       </Card>
 
-      {/* Card 3 - Comercio Top */}
       <Card className="@container/card">
         <CardHeader>
           <CardDescription>Comercio Top</CardDescription>
@@ -118,10 +115,9 @@ export function DashboardCards() {
         </CardFooter>
       </Card>
 
-      {/* Card 4 - Ticket Promedio */}
       <Card className="@container/card">
         <CardHeader>
-          <CardDescription>Ticket Promedio</CardDescription>
+          <CardDescription>TransacciónPromedio</CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">{formatCurrency(stats.foco)}</CardTitle>
         </CardHeader>
         <CardFooter className="flex-col items-start gap-1.5 text-sm">

@@ -64,11 +64,44 @@ export type TransactionFormMode = "create" | "edit";
 export type LoadingState = "idle" | "loading" | "success" | "error";
 
 /**
- * DTO de ítem de listado de usuario (id, name)
+ * DTO de ítem de listado de usuario (id, name) — para combos u otros usos
  */
 export interface UserListItemDTO {
   id: number;
   name: string;
+}
+
+/**
+ * DTO de respuesta con los datos completos de un usuario
+ */
+export interface UserResponseDTO {
+  id: number;
+  name: string;
+  email: string;
+  phone?: string;
+  userType: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * DTO para crear un usuario (userType constante "User")
+ */
+export interface UserCreateDTO {
+  name: string;
+  email: string;
+  phone?: string;
+  userType: string;
+}
+
+/**
+ * DTO para actualizar un usuario. Todos los campos son opcionales.
+ */
+export interface UserUpdateDTO {
+  name?: string;
+  email?: string;
+  phone?: string;
+  userType?: string;
 }
 
 /**

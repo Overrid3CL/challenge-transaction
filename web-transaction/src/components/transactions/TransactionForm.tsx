@@ -1,13 +1,17 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { TransactionCreateDTO, TransactionUpdateDTO, TransactionResponseDTO, TransactionFormMode } from "@/types/transaction";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { TransactionCreateDTO, TransactionUpdateDTO, TransactionResponseDTO, TransactionFormMode, UserResponseDTO, BusinessListItemDTO } from "@/types/transaction";
 import { isoToLocalDateTime } from "@/lib/utils/format";
 import { transactionCreateSchema, transactionUpdateSchema } from "@/lib/validations/transaction";
 import type { TransactionCreateFormValues } from "@/lib/validations/transaction";
+import { userService } from "@/lib/api/userService";
+import { businessService } from "@/lib/api/businessService";
 
 interface TransactionFormProps {
   mode: TransactionFormMode;
@@ -30,10 +34,38 @@ function getDefaultValues(initialData?: TransactionResponseDTO): TransactionForm
 }
 
 export function TransactionForm({ mode, initialData, onSubmit, onCancel, isLoading = false }: TransactionFormProps) {
+  const [users, setUsers] = useState<UserResponseDTO[]>([]);
+  const [businesses, setBusinesses] = useState<BusinessListItemDTO[]>([]);
+  const [optionsLoading, setOptionsLoading] = useState(true);
+
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(mode === "create" ? transactionCreateSchema : transactionUpdateSchema) as Resolver<TransactionFormValues>,
     defaultValues: getDefaultValues(initialData),
   });
+
+  useEffect(() => {
+    let cancelled = false;
+    setOptionsLoading(true);
+    Promise.all([userService.getAllUsers(), businessService.getAllBusinesses()])
+      .then(([usersData, businessesData]) => {
+        if (!cancelled) {
+          setUsers(usersData ?? []);
+          setBusinesses(businessesData ?? []);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          const message = (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ?? (err as Error)?.message ?? "Error al cargar opciones";
+          toast.error(message);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setOptionsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (initialData) {
@@ -79,7 +111,18 @@ export function TransactionForm({ mode, initialData, onSubmit, onCancel, isLoadi
           render={({ field, fieldState }) => (
             <>
               <Label htmlFor="userId">Usuario {mode === "create" && <span className="text-destructive">*</span>}</Label>
-              <Input {...field} id="userId" type="number" min={1} disabled={isLoading} aria-invalid={fieldState.invalid} />
+              <Select value={field.value} onValueChange={field.onChange} disabled={isLoading || optionsLoading} aria-invalid={fieldState.invalid}>
+                <SelectTrigger id="userId" className="w-full" aria-invalid={fieldState.invalid}>
+                  <SelectValue placeholder={optionsLoading ? "Cargando..." : "Seleccione usuario"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {users.map((user) => (
+                    <SelectItem key={user.id} value={String(user.id)}>
+                      {user.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {fieldState.invalid && fieldState.error?.message && <p className="text-sm text-destructive">{fieldState.error.message}</p>}
             </>
           )}
@@ -92,8 +135,19 @@ export function TransactionForm({ mode, initialData, onSubmit, onCancel, isLoadi
           control={form.control}
           render={({ field, fieldState }) => (
             <>
-              <Label htmlFor="businessId">Negocio {mode === "create" && <span className="text-destructive">*</span>}</Label>
-              <Input {...field} id="businessId" type="number" min={1} disabled={isLoading} aria-invalid={fieldState.invalid} />
+              <Label htmlFor="businessId">Comercio {mode === "create" && <span className="text-destructive">*</span>}</Label>
+              <Select value={field.value} onValueChange={field.onChange} disabled={isLoading || optionsLoading} aria-invalid={fieldState.invalid}>
+                <SelectTrigger id="businessId" className="w-full" aria-invalid={fieldState.invalid}>
+                  <SelectValue placeholder={optionsLoading ? "Cargando..." : "Seleccione comercio"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {businesses.map((business) => (
+                    <SelectItem key={business.id} value={String(business.id)}>
+                      {business.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {fieldState.invalid && fieldState.error?.message && <p className="text-sm text-destructive">{fieldState.error.message}</p>}
             </>
           )}

@@ -9,6 +9,7 @@ interface NavbarProps {
 const menuLinks = [
   { path: "/", label: "Inicio" },
   { path: "/transactions", label: "Transacciones" },
+  { path: "/users", label: "Usuarios" },
 ];
 
 export function Navbar({ onMenuClick }: NavbarProps) {

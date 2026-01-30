@@ -8,7 +8,7 @@ interface MobileSidebarProps {
 
 const menuLinks = [
   { path: "/", label: "Inicio" },
-  { path: "/transacciones", label: "Transacciones" },
+  { path: "/transactions", label: "Transacciones" },
 ];
 
 export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {

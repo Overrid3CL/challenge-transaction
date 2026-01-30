@@ -10,7 +10,7 @@ import type { TransactionResponseDTO, TransactionCreateDTO, TransactionUpdateDTO
 import { Plus } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/shared/ConfirmDeleteDialog";
 
-export function TransaccionesPage() {
+export function TransactionsPage() {
   const [transactions, setTransactions] = useState<TransactionResponseDTO[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -185,17 +185,7 @@ export function TransaccionesPage() {
         </Card>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Lista de Transacciones</CardTitle>
-          <CardDescription>
-            {transactions.length} transacción{transactions.length !== 1 ? "es" : ""} registrada{transactions.length !== 1 ? "s" : ""}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <TransactionTable transactions={transactions} onEdit={handleEdit} onDelete={handleDelete} isLoading={isLoading} />
-        </CardContent>
-      </Card>
+      <TransactionTable transactions={transactions} onEdit={handleEdit} onDelete={handleDelete} isLoading={isLoading} />
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-2xl">

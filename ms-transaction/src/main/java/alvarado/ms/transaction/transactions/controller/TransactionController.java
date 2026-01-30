@@ -14,35 +14,80 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @Tag(name = "Transacciones", description = "API para gestión de transacciones")
 @RestController
 @RequestMapping("/transaction")
 @RequiredArgsConstructor
 public class TransactionController {
-    
+
+    private static final int DEFAULT_PAGE = 0;
+    private static final int DEFAULT_SIZE = 20;
+    private static final int MAX_SIZE = 100;
+    private static final String DEFAULT_SORT = "transactionDate,desc";
+    private static final List<String> ALLOWED_SORT_FIELDS = List.of("id", "userName", "businessName", "amount", "transactionDate", "description");
+    private static final Map<String, String> SORT_FIELD_TO_JPA = Map.of("userName", "user.name", "businessName", "business.name");
+
     private final TransactionService transactionService;
-    
+
     @Operation(
-            summary = "Listar todas las transacciones",
-            description = "Obtiene una lista de todas las transacciones disponibles"
+            summary = "Listar transacciones (paginado)",
+            description = "Obtiene transacciones con paginación, ordenamiento y búsqueda. " +
+                    "Params: page (default 0), size (default 20, max 100), sort (ej. amount,desc), search (usuario, comercio, descripción)."
     )
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
-                    description = "Lista de transacciones obtenida exitosamente",
-                    content = @Content(schema = @Schema(implementation = TransactionResponseDTO.class))
-            )
+                    description = "Página de transacciones obtenida exitosamente"
+            ),
+            @ApiResponse(responseCode = "400", description = "Parámetros inválidos")
     })
     @GetMapping
-    public ResponseEntity<List<TransactionResponseDTO>> getAllTransactions() {
-        List<TransactionResponseDTO> transactions = transactionService.findAll();
-        return ResponseEntity.ok(transactions);
+    public ResponseEntity<Page<TransactionResponseDTO>> getAllTransactions(
+            @Parameter(description = "Página (0-based)", example = "0")
+            @RequestParam(required = false) Integer page,
+            @Parameter(description = "Tamaño de página", example = "20")
+            @RequestParam(required = false) Integer size,
+            @Parameter(description = "Orden: campo,dirección (ej. amount,desc)", example = "transactionDate,desc")
+            @RequestParam(required = false) String sort,
+            @Parameter(description = "Búsqueda por usuario, comercio o descripción")
+            @RequestParam(required = false) String search) {
+
+        int p = page != null && page >= 0 ? page : DEFAULT_PAGE;
+        int s = size != null && size >= 1 && size <= MAX_SIZE ? size : DEFAULT_SIZE;
+        Sort sortObj = parseSort(sort);
+        Pageable pageable = PageRequest.of(p, s, sortObj);
+        String searchTrimmed = (search != null && !search.isBlank()) ? search.trim() : null;
+
+        Page<TransactionResponseDTO> result = transactionService.findAll(pageable, searchTrimmed);
+        return ResponseEntity.ok(result);
+    }
+
+    private Sort parseSort(String sortParam) {
+        String s = (sortParam != null && !sortParam.isBlank()) ? sortParam.trim() : DEFAULT_SORT;
+        String[] parts = s.split(",", 2);
+        String field = parts[0].trim();
+        Sort.Direction dir = Sort.Direction.DESC;
+        if (parts.length > 1) {
+            String d = parts[1].trim().toLowerCase();
+            if ("asc".equals(d)) dir = Sort.Direction.ASC;
+        }
+        if (!ALLOWED_SORT_FIELDS.contains(field)) {
+            field = "transactionDate";
+            dir = Sort.Direction.DESC;
+        }
+        String jpaProperty = SORT_FIELD_TO_JPA.getOrDefault(field, field);
+        return Sort.by(dir, jpaProperty);
     }
     
     @Operation(

@@ -17,7 +17,7 @@ class UserMapperTest {
                 .id(1)
                 .name("Test User")
                 .email("test@email.com")
-                .userType("TENPISTA")
+                .userType("USER")   
                 .deleted(false)
                 .build();
 
@@ -37,7 +37,7 @@ class UserMapperTest {
                 .id(2)
                 .name(null)
                 .email("other@email.com")
-                .userType("TENPISTA")
+                .userType("USER")
                 .deleted(false)
                 .build();
 

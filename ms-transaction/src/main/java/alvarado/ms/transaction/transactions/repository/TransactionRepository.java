@@ -2,6 +2,8 @@ package alvarado.ms.transaction.transactions.repository;
 
 import alvarado.ms.transaction.transactions.domain.entity.Transaction;
 import alvarado.ms.transaction.users.domain.entity.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -18,7 +20,21 @@ public interface TransactionRepository extends JpaRepository<Transaction, Intege
     
     @Query("SELECT t FROM Transaction t WHERE t.deleted = false")
     List<Transaction> findAllActive();
-    
+
+    @Query(
+            value = "SELECT t FROM Transaction t JOIN FETCH t.user u JOIN FETCH t.business b " +
+                    "WHERE t.deleted = false " +
+                    "AND (:search IS NULL OR :search = '' OR LOWER(u.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
+                    "OR LOWER(b.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
+                    "OR (t.description IS NOT NULL AND LOWER(t.description) LIKE LOWER(CONCAT('%', :search, '%'))))",
+            countQuery = "SELECT COUNT(t) FROM Transaction t JOIN t.user u JOIN t.business b " +
+                    "WHERE t.deleted = false " +
+                    "AND (:search IS NULL OR :search = '' OR LOWER(u.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
+                    "OR LOWER(b.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
+                    "OR (t.description IS NOT NULL AND LOWER(t.description) LIKE LOWER(CONCAT('%', :search, '%'))))"
+    )
+    Page<Transaction> findAllActive(@Param("search") String search, Pageable pageable);
+
     @Query("SELECT t FROM Transaction t WHERE t.id = :id AND t.deleted = false")
     Optional<Transaction> findByIdAndDeletedFalse(@Param("id") Integer id);
     

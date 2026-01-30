@@ -32,7 +32,7 @@ class UserValidatorTest {
                 .id(1)
                 .name("Test User")
                 .email("test@email.com")
-                .userType("TENPISTA")
+                .userType("USER")
                 .deleted(false)
                 .build();
     }

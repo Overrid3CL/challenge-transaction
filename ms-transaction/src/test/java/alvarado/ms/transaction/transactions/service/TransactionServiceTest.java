@@ -23,6 +23,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -34,6 +38,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -72,7 +77,7 @@ class TransactionServiceTest {
                 .id(1)
                 .name("Test User")
                 .email("test@email.com")
-                .userType("TENPISTA")
+                .userType("USER")
                 .deleted(false)
                 .build();
         
@@ -117,17 +122,33 @@ class TransactionServiceTest {
     void testFindAll_Success() {
         // Given
         List<Transaction> transactions = Arrays.asList(testTransaction);
-        when(transactionRepository.findAllActive()).thenReturn(transactions);
+        Page<Transaction> page = new PageImpl<>(transactions, PageRequest.of(0, 20), 1);
+        when(transactionRepository.findAllActive(eq(null), any(Pageable.class))).thenReturn(page);
         when(mapper.toResponseDTO(any(Transaction.class))).thenReturn(responseDTO);
-        
+
         // When
-        List<TransactionResponseDTO> result = transactionService.findAll();
-        
+        Page<TransactionResponseDTO> result = transactionService.findAll(PageRequest.of(0, 20), null);
+
         // Then
         assertNotNull(result);
-        assertEquals(1, result.size());
-        verify(transactionRepository).findAllActive();
+        assertEquals(1, result.getContent().size());
+        assertEquals(1, result.getTotalElements());
+        verify(transactionRepository).findAllActive(eq(null), any(Pageable.class));
         verify(mapper, times(1)).toResponseDTO(any(Transaction.class));
+    }
+
+    @Test
+    void testFindAll_WithSearch() {
+        List<Transaction> transactions = Arrays.asList(testTransaction);
+        Page<Transaction> page = new PageImpl<>(transactions, PageRequest.of(0, 10), 1);
+        when(transactionRepository.findAllActive(eq("test"), any(Pageable.class))).thenReturn(page);
+        when(mapper.toResponseDTO(any(Transaction.class))).thenReturn(responseDTO);
+
+        Page<TransactionResponseDTO> result = transactionService.findAll(PageRequest.of(0, 10), "test");
+
+        assertNotNull(result);
+        assertEquals(1, result.getContent().size());
+        verify(transactionRepository).findAllActive(eq("test"), any(Pageable.class));
     }
     
     @Test

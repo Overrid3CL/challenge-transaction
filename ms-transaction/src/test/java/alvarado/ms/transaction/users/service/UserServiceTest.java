@@ -1,6 +1,7 @@
 package alvarado.ms.transaction.users.service;
 
 import alvarado.ms.transaction.users.controller.dto.UserListItemDTO;
+import alvarado.ms.transaction.users.controller.dto.UserResponseDTO;
 import alvarado.ms.transaction.users.controller.mapper.UserMapper;
 import alvarado.ms.transaction.users.domain.entity.User;
 import alvarado.ms.transaction.users.repository.UserRepository;
@@ -15,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -33,7 +35,8 @@ class UserServiceTest {
     private UserServiceImpl userService;
 
     private User testUser;
-    private UserListItemDTO testDTO;
+    private UserResponseDTO testResponseDTO;
+    private UserListItemDTO testListItemDTO;
 
     @BeforeEach
     void setUp() {
@@ -41,10 +44,16 @@ class UserServiceTest {
                 .id(1)
                 .name("Test User")
                 .email("test@email.com")
-                .userType("TENPISTA")
+                .userType("USER")
                 .deleted(false)
                 .build();
-        testDTO = UserListItemDTO.builder()
+        testResponseDTO = UserResponseDTO.builder()
+                .id(1)
+                .name("Test User")
+                .email("test@email.com")
+                .userType("USER")
+                .build();
+        testListItemDTO = UserListItemDTO.builder()
                 .id(1)
                 .name("Test User")
                 .build();
@@ -55,10 +64,10 @@ class UserServiceTest {
         // Given
         List<User> users = Arrays.asList(testUser);
         when(userRepository.findAllByDeletedFalse()).thenReturn(users);
-        when(mapper.toListItemDTO(any(User.class))).thenReturn(testDTO);
+        when(mapper.toResponseDTO(any(User.class))).thenReturn(testResponseDTO);
 
         // When
-        List<UserListItemDTO> result = userService.findAll();
+        List<UserResponseDTO> result = userService.findAll();
 
         // Then
         assertNotNull(result);
@@ -66,7 +75,7 @@ class UserServiceTest {
         assertEquals(1, result.get(0).getId());
         assertEquals("Test User", result.get(0).getName());
         verify(userRepository).findAllByDeletedFalse();
-        verify(mapper, times(1)).toListItemDTO(testUser);
+        verify(mapper, times(1)).toResponseDTO(testUser);
     }
 
     @Test
@@ -75,12 +84,31 @@ class UserServiceTest {
         when(userRepository.findAllByDeletedFalse()).thenReturn(Collections.emptyList());
 
         // When
-        List<UserListItemDTO> result = userService.findAll();
+        List<UserResponseDTO> result = userService.findAll();
 
         // Then
         assertNotNull(result);
         assertTrue(result.isEmpty());
         verify(userRepository).findAllByDeletedFalse();
-        verify(mapper, never()).toListItemDTO(any(User.class));
+        verify(mapper, never()).toResponseDTO(any(User.class));
+    }
+
+    @Test
+    void findAllAsListItem_returnsMappedList() {
+        // Given
+        List<User> users = Arrays.asList(testUser);
+        when(userRepository.findAllByDeletedFalse()).thenReturn(users);
+        when(mapper.toListItemDTO(any(User.class))).thenReturn(testListItemDTO);
+
+        // When
+        List<UserListItemDTO> result = userService.findAllAsListItem();
+
+        // Then
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals(1, result.get(0).getId());
+        assertEquals("Test User", result.get(0).getName());
+        verify(userRepository).findAllByDeletedFalse();
+        verify(mapper, times(1)).toListItemDTO(testUser);
     }
 }

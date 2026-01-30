@@ -48,7 +48,7 @@ class TransactionMapperTest {
     @Test
     void toResponseDTO_withUserAndBusiness() {
         // Given
-        User user = User.builder().id(1).name("Test User").email("a@b.com").userType("TENPISTA").deleted(false).build();
+        User user = User.builder().id(1).name("Test User").email("a@b.com").userType("USER").deleted(false).build();
         Business business = Business.builder().id(1).name("Test Business").categoryId(1).deleted(false).build();
         Transaction entity = Transaction.builder()
                 .id(1)

@@ -16,6 +16,8 @@ import alvarado.ms.transaction.transactions.service.validator.BusinessValidator;
 import alvarado.ms.transaction.transactions.service.validator.UserValidator;
 import alvarado.ms.transaction.transactions.service.validator.TransactionBusinessValidator;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,12 +40,11 @@ public class TransactionServiceImpl implements TransactionService {
     
     @Override
     @Transactional(readOnly = true)
-    public List<TransactionResponseDTO> findAll() {
-        return transactionRepository.findAllActive().stream()
-                .map(mapper::toResponseDTO)
-                .collect(Collectors.toList());
+    public Page<TransactionResponseDTO> findAll(Pageable pageable, String search) {
+        return transactionRepository.findAllActive(search, pageable)
+                .map(mapper::toResponseDTO);
     }
-    
+
     @Override
     @Transactional(readOnly = true)
     public TransactionResponseDTO findById(Integer id) {

@@ -1,6 +1,6 @@
 package alvarado.ms.transaction.users.controller;
 
-import alvarado.ms.transaction.users.controller.dto.UserListItemDTO;
+import alvarado.ms.transaction.users.controller.dto.UserResponseDTO;
 import alvarado.ms.transaction.users.service.UserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,11 +29,13 @@ class UserControllerTest {
     @Test
     void getAllUsers_success() throws Exception {
         // Given
-        UserListItemDTO dto = UserListItemDTO.builder()
+        UserResponseDTO dto = UserResponseDTO.builder()
                 .id(1)
                 .name("Test User")
+                .email("test@example.com")
+                .userType("USER")
                 .build();
-        List<UserListItemDTO> users = Arrays.asList(dto);
+        List<UserResponseDTO> users = Arrays.asList(dto);
         when(userService.findAll()).thenReturn(users);
 
         // When & Then
@@ -41,7 +43,8 @@ class UserControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$[0].id").value(1))
-                .andExpect(jsonPath("$[0].name").value("Test User"));
+                .andExpect(jsonPath("$[0].name").value("Test User"))
+                .andExpect(jsonPath("$[0].email").value("test@example.com"));
 
         verify(userService).findAll();
     }

@@ -11,6 +11,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -21,6 +24,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -50,18 +54,50 @@ class TransactionControllerTest {
                 .transactionDate(Instant.now().minus(1, ChronoUnit.DAYS))
                 .description("Test transaction")
                 .build();
-        
-        List<TransactionResponseDTO> transactions = Arrays.asList(responseDTO);
-        when(transactionService.findAll()).thenReturn(transactions);
-        
+        List<TransactionResponseDTO> content = Arrays.asList(responseDTO);
+        Page<TransactionResponseDTO> page = new PageImpl<>(content, org.springframework.data.domain.PageRequest.of(0, 20), 1);
+        when(transactionService.findAll(any(Pageable.class), eq(null))).thenReturn(page);
+
         // When & Then
         mockMvc.perform(get("/transaction"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$[0].id").value(1))
-                .andExpect(jsonPath("$[0].amount").value(10000));
-        
-        verify(transactionService).findAll();
+                .andExpect(jsonPath("$.content[0].id").value(1))
+                .andExpect(jsonPath("$.content[0].amount").value(10000))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.number").value(0));
+
+        verify(transactionService).findAll(any(Pageable.class), eq(null));
+    }
+
+    @Test
+    void testGetAllTransactions_WithParams() throws Exception {
+        TransactionResponseDTO dto = TransactionResponseDTO.builder()
+                .id(2)
+                .userId(1)
+                .userName("User")
+                .businessId(1)
+                .businessName("Biz")
+                .amount(5000)
+                .transactionDate(Instant.now().minus(2, ChronoUnit.DAYS))
+                .build();
+        Page<TransactionResponseDTO> page = new PageImpl<>(Arrays.asList(dto), org.springframework.data.domain.PageRequest.of(1, 10), 25);
+        when(transactionService.findAll(any(Pageable.class), eq("foo"))).thenReturn(page);
+
+        mockMvc.perform(get("/transaction")
+                        .param("page", "1")
+                        .param("size", "10")
+                        .param("sort", "amount,desc")
+                        .param("search", "foo"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].id").value(2))
+                .andExpect(jsonPath("$.totalElements").value(25))
+                .andExpect(jsonPath("$.number").value(1))
+                .andExpect(jsonPath("$.size").value(10));
+
+        verify(transactionService).findAll(any(Pageable.class), eq("foo"));
     }
     
     @Test

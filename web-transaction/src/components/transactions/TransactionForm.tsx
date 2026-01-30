@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -28,7 +28,7 @@ function getDefaultValues(initialData?: TransactionResponseDTO): TransactionForm
     userId: initialData?.userId?.toString() ?? "",
     businessId: initialData?.businessId?.toString() ?? "",
     amount: initialData?.amount?.toString() ?? "",
-    transactionDate: initialData ? isoToLocalDateTime(initialData.transactionDate) : "",
+    transactionDate: initialData ? isoToLocalDateTime(initialData.transactionDate) : isoToLocalDateTime(new Date().toISOString()),
     description: initialData?.description ?? "",
   };
 }
@@ -73,6 +73,15 @@ export function TransactionForm({ mode, initialData, onSubmit, onCancel, isLoadi
     }
   }, [initialData, form]);
 
+  // Incluir usuario de la transacción en las opciones si el API no lo devuelve (ej. usuario eliminado)
+  const usersForSelect = useMemo(() => {
+    const list = [...users];
+    if (initialData?.userId != null && initialData?.userName != null && !list.some((u) => u.id === initialData.userId)) {
+      list.unshift({ id: initialData.userId, name: initialData.userName, email: "", userType: "USER" } as UserResponseDTO);
+    }
+    return list;
+  }, [users, initialData?.userId, initialData?.userName]);
+
   const handleSubmitForm = async (data: TransactionFormValues) => {
     try {
       if (mode === "create") {
@@ -116,7 +125,7 @@ export function TransactionForm({ mode, initialData, onSubmit, onCancel, isLoadi
                   <SelectValue placeholder={optionsLoading ? "Cargando..." : "Seleccione usuario"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {users.map((user) => (
+                  {usersForSelect.map((user) => (
                     <SelectItem key={user.id} value={String(user.id)}>
                       {user.name}
                     </SelectItem>

@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { TransactionTable } from "@/components/transactions/TransactionTable";
 import { TransactionForm } from "@/components/transactions/TransactionForm";
 import { transactionService } from "@/lib/api/transactionService";
+import { translateValidationMessage } from "@/lib/utils/validationMessages";
 import type { TransactionResponseDTO, TransactionCreateDTO, TransactionUpdateDTO } from "@/types/transaction";
 import { Plus, Search } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/shared/ConfirmDeleteDialog";
@@ -162,12 +163,14 @@ export function TransactionsPage() {
       const errorMessage = e.response?.data?.message || e.message || (isEditMode ? "Error al actualizar la transacción" : "Error al crear la transacción");
       let messageToShow: string;
       if (e.response?.data?.validationErrors) {
-        messageToShow = `${errorMessage}: ${Object.values(e.response.data.validationErrors).join(", ")}`;
+        const translated = Object.values(e.response.data.validationErrors).map(translateValidationMessage);
+        messageToShow = translated.join(", ");
+
+        setError(messageToShow);
       } else {
         messageToShow = errorMessage;
+        toast.error(messageToShow);
       }
-      setError(messageToShow);
-      toast.error(messageToShow);
       console.error("Error al guardar transacción:", err);
     } finally {
       setIsSubmitting(false);
@@ -195,14 +198,6 @@ export function TransactionsPage() {
           Nueva Transacción
         </Button>
       </div>
-
-      {error && (
-        <Card className="mb-4 border-destructive">
-          <CardContent className="pt-6">
-            <p className="text-destructive">{error}</p>
-          </CardContent>
-        </Card>
-      )}
 
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
         <div className="relative flex-1 max-w-sm">

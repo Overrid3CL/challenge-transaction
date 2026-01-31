@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Card, CardContent } from "@/components/ui/card";
 import { TransactionTable } from "@/components/transactions/TransactionTable";
 import { TransactionForm } from "@/components/transactions/TransactionForm";
 import { transactionService } from "@/lib/api/transactionService";
@@ -165,7 +164,6 @@ export function TransactionsPage() {
       if (e.response?.data?.validationErrors) {
         const translated = Object.values(e.response.data.validationErrors).map(translateValidationMessage);
         messageToShow = translated.join(", ");
-
         setError(messageToShow);
       } else {
         messageToShow = errorMessage;

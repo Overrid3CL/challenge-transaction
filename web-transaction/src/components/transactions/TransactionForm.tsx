@@ -184,7 +184,7 @@ export function TransactionForm({ mode, initialData, onSubmit, onCancel, isLoadi
           render={({ field, fieldState }) => (
             <>
               <Label htmlFor="transactionDate">Fecha de Transacción {mode === "create" && <span className="text-destructive">*</span>}</Label>
-              <Input {...field} id="transactionDate" type="datetime-local" disabled={isLoading} aria-invalid={fieldState.invalid} />
+              <Input {...field} id="transactionDate" type="datetime-local" max={isoToLocalDateTime(new Date().toISOString())} disabled={isLoading} aria-invalid={fieldState.invalid} />
               {fieldState.invalid && fieldState.error?.message && <p className="text-sm text-destructive">{fieldState.error.message}</p>}
             </>
           )}

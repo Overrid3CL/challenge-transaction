@@ -198,25 +198,9 @@ export function TransactionsPage() {
       </div>
 
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-        <div className="relative flex-1 max-w-sm">
+        <div className="relative flex-1 md:max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Buscar por usuario, comercio, descripción..." value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="pl-9" />
-        </div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>Mostrar</span>
-          <Select value={String(pageSize)} onValueChange={(v) => handlePageSizeChange(Number(v))}>
-            <SelectTrigger className="w-[72px] h-9">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PAGE_SIZE_OPTIONS.map((n) => (
-                <SelectItem key={n} value={String(n)}>
-                  {n}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <span>por página</span>
         </div>
       </div>
 
@@ -227,13 +211,31 @@ export function TransactionsPage() {
           <p className="text-sm text-muted-foreground">
             Mostrando {from}–{to} de {totalElements}
           </p>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={first} onClick={() => setPage((p) => Math.max(0, p - 1))}>
-              Anterior
-            </Button>
-            <Button variant="outline" size="sm" disabled={last} onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}>
-              Siguiente
-            </Button>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>Mostrar</span>
+              <Select value={String(pageSize)} onValueChange={(v) => handlePageSizeChange(Number(v))}>
+                <SelectTrigger className="w-[72px] h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAGE_SIZE_OPTIONS.map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {n}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <span>por página</span>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" disabled={first} onClick={() => setPage((p) => Math.max(0, p - 1))}>
+                Anterior
+              </Button>
+              <Button variant="outline" size="sm" disabled={last} onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}>
+                Siguiente
+              </Button>
+            </div>
           </div>
         </div>
       )}
